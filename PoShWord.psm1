@@ -1,3 +1,7 @@
+# Import the word list
+
+    $WordList = Import-Clixml -Path "$PSScriptRoot\Wordlist.xml"
+
 # Setup variables
 
     $ExportParams = @{}
