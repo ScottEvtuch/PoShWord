@@ -1,6 +1,13 @@
 # Import the word list
 
-    $WordList = Import-Clixml -Path "$PSScriptRoot\Wordlist.xml"
+    try
+    {
+        $WordList = Import-Clixml -Path "$PSScriptRoot\Wordlist.xml"
+    }
+    catch
+    {
+        throw "Failed to import word list: $_"
+    }
 
 # Setup variables
 
