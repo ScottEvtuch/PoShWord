@@ -18,7 +18,7 @@ function New-PWPassword
         [Parameter()]
         [ValidateRange(1,64)]
         [int]
-        $MinLength = 12,
+        $MinLength = 14,
 
         # Maximum length
         [Parameter(ParameterSetName='CharacterLength')]
