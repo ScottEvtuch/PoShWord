@@ -31,7 +31,19 @@ function New-PWPassword
         [Parameter()]
         [ValidateRange(1,64)]
         [int]
-        $Count = 12
+        $Count = 12,
+
+        # Punctuation options
+        [Parameter()]
+        [ValidateSet("None","Optional","Mandatory")]
+        [String]
+        $Punctuation = "Optional",
+
+        # Punctuation options
+        [Parameter()]
+        [ValidateSet("None","Optional","Mandatory")]
+        [String]
+        $Terminator = "Optional"
     )
 
     Begin
@@ -45,31 +57,117 @@ function New-PWPassword
             throw "Minimum length is greater than maximum length"
         }
 
+        # Decide punctuation chance
+        if ($Punctuation -ne "None")
+        {
+            # Determine average word count
+            $AvgWordCount = ( $MinLength + $MaxLength ) / 2 / $WordInfo.Average
+            Write-Debug "Expecting an average word count of $AvgWordCount"
+
+            # Set chance of punctuation
+            switch ($Punctuation)
+            {
+                'Optional'
+                {
+                    # Roughly every other password will contain punctuation
+                    $PunctuationChance = 2147483647 * ( 0.5 / ($AvgWordCount -1 ) )
+                }
+                'Mandatory'
+                {
+                    # Roughly every password will contain punctuation
+                    $PunctuationChance = 2147483647 * ( 1 / ($AvgWordCount -1 ) )
+                }
+            }
+            Write-Debug "Chance of punctuation set to $($PunctuationChance / 2147483647)"
+        }
+
         # Set up a variable for output
         $Passwords = @()
 
-        # Loop through adding words
-        $Password = ''
+        # Loop through adding passwords
         do
         {
-            # Add a word
-            $Word = $WordList | Get-Random
-            $Password += (Get-Culture).TextInfo.ToTitleCase($Word)
+            $PasswordReset = $false
+            $Password = ''
+            $PasswordHasPunctuation = $false
 
-            # Check for invalid
-            if ($Password.length -gt $MaxLength)
+            # Loop through adding words and punctuation
+            do
             {
-                Write-Debug "Invalid this try ($Password), clearing variable"
-                $Password = ''
-            }
+                # Add a word
+                $Word = $WordList | Get-Random
+                $Password += (Get-Culture).TextInfo.ToTitleCase($Word)
 
-            # Check for valid
-            if ($Password.Length -ge $MinLength)
-            {
-                Write-Debug "Valid password found ($Password), adding to list"
-                $Passwords += $Password
-                $Password = ''
+                # Roll for punctuation if enabled
+                $WordHasPunctuation = $false
+                if ($Punctuation -ne "None")
+                {
+                    if ($PunctuationChance -gt $(Get-Random))
+                    {
+                        # Add punctuation
+                        $Password += $PunctuationList | Get-Random
+                        $PasswordHasPunctuation = $true
+                        $WordHasPunctuation = $true
+                    }
+                }
+
+                # Check for invalid length
+                if ($Password.length -gt $MaxLength)
+                {
+                    Write-Debug "Invalid this try ($Password), trying again"
+                    $PasswordReset = $true
+                }
+
+                # Check for valid length
+                switch ($Terminator)
+                {
+                    'None'
+                    {
+                        if ($Password.Length -ge $MinLength -and -not $WordHasPunctuation)
+                        {
+                            # Password already fits and does not have punctuation
+                            Write-Debug "Valid password found ($Password), adding to list"
+                            $Passwords += $Password
+                            $PasswordReset = $true
+                        }
+                        elseif ($Password.Length -ge $($MinLength + 1) -and $WordHasPunctuation)
+                        {
+                            # Password would fit without the unecessary punctuation
+                            $Password = $Password.SubString(0,$Password.Length - 1)
+                            Write-Debug "Valid password found ($Password), adding to list"
+                            $Passwords += $Password
+                            $PasswordReset = $true
+                        }
+                    }
+                    'Optional'
+                    {
+                        # TODO
+                    }
+                    'Mandatory'
+                    {
+                        if ($Password.Length -ge $MinLength -and $WordHasPunctuation)
+                        {
+                            Write-Debug "Replacing random punctuation with terminator"
+                            # Password already fits and has a terminator that needs to be replaced
+                            $Password = $Password.SubString(0,$Password.Length - 1) + $($TerminatorList | Get-Random)
+                            Write-Debug "Valid password found ($Password), adding to list"
+                            $Passwords += $Password
+                            $PasswordReset = $true
+                        }
+                        elseif ($Password.Length -ge $($MinLength - 1) -and -not $WordHasPunctuation)
+                        {
+                            Write-Debug "Adding a terminator"
+                            # Password would fit if we added a terminator
+                            $Password += $TerminatorList | Get-Random
+                            Write-Debug "Valid password found ($Password), adding to list"
+                            $Passwords += $Password
+                            $PasswordReset = $true
+                        }
+                    }
+                }
+                
             }
+            while (!$PasswordReset)
         }
         while ($Passwords.Count -lt $Count)
 
