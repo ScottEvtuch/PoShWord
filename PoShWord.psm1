@@ -3,6 +3,10 @@
     try
     {
         $WordList = Import-Clixml -Path "$PSScriptRoot\Wordlist.xml"
+
+        $WordInfo = $WordList | Measure-Object -Average -Maximum -Minimum -Property length
+
+        Write-Verbose "Average word length is $($WordInfo.Average)"
     }
     catch
     {
@@ -10,6 +14,10 @@
     }
 
 # Setup variables
+
+    $PunctuationList = @(',',';',':','.')
+
+    $TerminatorList = @('.','?','!')
 
     $ExportParams = @{}
 
