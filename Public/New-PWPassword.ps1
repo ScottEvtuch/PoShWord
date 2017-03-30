@@ -89,7 +89,6 @@ function New-PWPassword
         {
             $PasswordHasPunctuation = $false
             $PasswordLengthValid = $false
-            $PasswordValid = $false
             $Password = ''
 
             # Loop through adding words and punctuation
@@ -115,7 +114,6 @@ function New-PWPassword
                 # Check for invalid length
                 if ($Password.length -gt $MaxLength)
                 {
-                    Write-Debug "Invalid this try ($Password), trying again"
                     break
                 }
 
@@ -170,9 +168,17 @@ function New-PWPassword
                 }
                 
             }
-            until ($PasswordLengthValid)
+            until ($Password.Length -ge $MinLength)
 
-            if ($PasswordLengthValid) # TODO: Validate mandatory punctuation or terminators
+            if (!$PasswordLengthValid)
+            {
+                Write-Debug "Length is invalid"
+            }
+            elseif ($Punctuation -eq 'Mandatory' -and !$PasswordHasPunctuation)
+            {
+                Write-Debug "Punctuation is invalid"
+            }
+            else
             {
                 Write-Debug "Valid password found ($Password), adding to list"
                 $Passwords += $Password
