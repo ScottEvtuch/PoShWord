@@ -87,9 +87,10 @@ function New-PWPassword
         # Loop through adding passwords
         do
         {
-            $PasswordReset = $false
-            $Password = ''
             $PasswordHasPunctuation = $false
+            $PasswordLengthValid = $false
+            $PasswordValid = $false
+            $Password = ''
 
             # Loop through adding words and punctuation
             do
@@ -115,7 +116,7 @@ function New-PWPassword
                 if ($Password.length -gt $MaxLength)
                 {
                     Write-Debug "Invalid this try ($Password), trying again"
-                    $PasswordReset = $true
+                    break
                 }
 
                 # Check for valid length
@@ -126,18 +127,14 @@ function New-PWPassword
                         if ($Password.Length -ge $MinLength -and -not $WordHasPunctuation)
                         {
                             # Password already fits and does not have punctuation
-                            Write-Debug "Valid password found ($Password), adding to list"
-                            $Passwords += $Password
-                            $PasswordReset = $true
+                            $PasswordLengthValid = $true
                         }
                         elseif ($Password.Length -ge $($MinLength + 1) -and $WordHasPunctuation)
                         {
                             # Password would fit without the unecessary punctuation
                             Write-Debug "Removing punctuation from final word"
                             $Password = $Password.SubString(0,$Password.Length - 1)
-                            Write-Debug "Valid password found ($Password), adding to list"
-                            $Passwords += $Password
-                            $PasswordReset = $true
+                            $PasswordLengthValid = $true
                         }
                     }
                     'Optional'
@@ -150,9 +147,7 @@ function New-PWPassword
                                 Write-Debug "Replacing random punctuation with terminator"
                                 $Password = $Password.SubString(0,$Password.Length - 1) + $($TerminatorList | Get-Random)
                             }
-                            Write-Debug "Valid password found ($Password), adding to list"
-                            $Passwords += $Password
-                            $PasswordReset = $true
+                            $PasswordLengthValid = $true
                         }
                     }
                     'Mandatory'
@@ -162,24 +157,26 @@ function New-PWPassword
                             # Password already fits and has a terminator that needs to be replaced
                             Write-Debug "Replacing random punctuation with terminator"
                             $Password = $Password.SubString(0,$Password.Length - 1) + $($TerminatorList | Get-Random)
-                            Write-Debug "Valid password found ($Password), adding to list"
-                            $Passwords += $Password
-                            $PasswordReset = $true
+                            $PasswordLengthValid = $true
                         }
                         elseif ($Password.Length -ge $($MinLength - 1) -and -not $WordHasPunctuation)
                         {
                             # Password would fit if we added a terminator
                             Write-Debug "Adding a terminator"
                             $Password += $TerminatorList | Get-Random
-                            Write-Debug "Valid password found ($Password), adding to list"
-                            $Passwords += $Password
-                            $PasswordReset = $true
+                            $PasswordLengthValid = $true
                         }
                     }
                 }
                 
             }
-            while (!$PasswordReset)
+            until ($PasswordLengthValid)
+
+            if ($PasswordLengthValid) # TODO: Validate mandatory punctuation or terminators
+            {
+                Write-Debug "Valid password found ($Password), adding to list"
+                $Passwords += $Password
+            }
         }
         while ($Passwords.Count -lt $Count)
 
