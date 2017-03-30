@@ -133,6 +133,7 @@ function New-PWPassword
                         elseif ($Password.Length -ge $($MinLength + 1) -and $WordHasPunctuation)
                         {
                             # Password would fit without the unecessary punctuation
+                            Write-Debug "Removing punctuation from final word"
                             $Password = $Password.SubString(0,$Password.Length - 1)
                             Write-Debug "Valid password found ($Password), adding to list"
                             $Passwords += $Password
@@ -141,14 +142,25 @@ function New-PWPassword
                     }
                     'Optional'
                     {
-                        # TODO
+                        if ($Password.Length -ge $MinLength)
+                        {
+                            if ($WordHasPunctuation)
+                            {
+                                # Passwords shouldn't end in punctuation that isn't a terminator
+                                Write-Debug "Replacing random punctuation with terminator"
+                                $Password = $Password.SubString(0,$Password.Length - 1) + $($TerminatorList | Get-Random)
+                            }
+                            Write-Debug "Valid password found ($Password), adding to list"
+                            $Passwords += $Password
+                            $PasswordReset = $true
+                        }
                     }
                     'Mandatory'
                     {
                         if ($Password.Length -ge $MinLength -and $WordHasPunctuation)
                         {
-                            Write-Debug "Replacing random punctuation with terminator"
                             # Password already fits and has a terminator that needs to be replaced
+                            Write-Debug "Replacing random punctuation with terminator"
                             $Password = $Password.SubString(0,$Password.Length - 1) + $($TerminatorList | Get-Random)
                             Write-Debug "Valid password found ($Password), adding to list"
                             $Passwords += $Password
@@ -156,8 +168,8 @@ function New-PWPassword
                         }
                         elseif ($Password.Length -ge $($MinLength - 1) -and -not $WordHasPunctuation)
                         {
-                            Write-Debug "Adding a terminator"
                             # Password would fit if we added a terminator
+                            Write-Debug "Adding a terminator"
                             $Password += $TerminatorList | Get-Random
                             Write-Debug "Valid password found ($Password), adding to list"
                             $Passwords += $Password
