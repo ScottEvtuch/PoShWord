@@ -98,79 +98,48 @@ function New-PWPassword
                 $Word = $WordList | Get-Random
                 $Password += (Get-Culture).TextInfo.ToTitleCase($Word)
 
-                # Roll for punctuation if enabled
-                $WordHasPunctuation = $false
-                if ($Punctuation -ne "None")
-                {
-                    if ($PunctuationChance -gt $(Get-Random))
-                    {
-                        # Add punctuation
-                        $Password += $PunctuationList | Get-Random
-                        $PasswordHasPunctuation = $true
-                        $WordHasPunctuation = $true
-                    }
-                }
-
-                # Check for invalid length
-                if ($Password.length -gt $MaxLength)
-                {
-                    break
-                }
-
-                # Check for valid length
+                # Add a terminator if we're above the minimum length
                 switch ($Terminator)
                 {
-                    'None'
-                    {
-                        if ($Password.Length -ge $MinLength -and -not $WordHasPunctuation)
-                        {
-                            # Password already fits and does not have punctuation
-                            $PasswordLengthValid = $true
-                        }
-                        elseif ($Password.Length -ge $($MinLength + 1) -and $WordHasPunctuation)
-                        {
-                            # Password would fit without the unecessary punctuation
-                            Write-Debug "Removing punctuation from final word"
-                            $Password = $Password.SubString(0,$Password.Length - 1)
-                            $PasswordLengthValid = $true
-                        }
-                    }
                     'Optional'
                     {
                         if ($Password.Length -ge $MinLength)
                         {
-                            if ($WordHasPunctuation)
+                            # Roughly every other password will have a terminator
+                            if ((2147483647 / 2) -gt $(Get-Random))
                             {
-                                # Passwords shouldn't end in punctuation that isn't a terminator
-                                Write-Debug "Replacing random punctuation with terminator"
-                                $Password = $Password.SubString(0,$Password.Length - 1) + $($TerminatorList | Get-Random)
+                                Write-Debug "Adding a terminator"
+                                $Password += $TerminatorList | Get-Random
                             }
-                            $PasswordLengthValid = $true
                         }
                     }
                     'Mandatory'
                     {
-                        if ($Password.Length -ge $MinLength -and $WordHasPunctuation)
-                        {
-                            # Password already fits and has a terminator that needs to be replaced
-                            Write-Debug "Replacing random punctuation with terminator"
-                            $Password = $Password.SubString(0,$Password.Length - 1) + $($TerminatorList | Get-Random)
-                            $PasswordLengthValid = $true
-                        }
-                        elseif ($Password.Length -ge $($MinLength - 1) -and -not $WordHasPunctuation)
+                        if ($Password.Length -ge ($MinLength - 1))
                         {
                             # Password would fit if we added a terminator
                             Write-Debug "Adding a terminator"
                             $Password += $TerminatorList | Get-Random
-                            $PasswordLengthValid = $true
                         }
                     }
                 }
-                
+
+                # Roll for punctuation if enabled and length allows
+                if ($Punctuation -ne "None" -and $Password.Length -lt $MinLength)
+                {
+                    Write-Debug "Rolling for punctuation"
+                    if ($PunctuationChance -gt $(Get-Random))
+                    {
+                        Write-Debug "Adding punctuation"
+                        $Password += $PunctuationList | Get-Random
+                        $PasswordHasPunctuation = $true
+                    }
+                }
+
             }
             until ($Password.Length -ge $MinLength)
 
-            if (!$PasswordLengthValid)
+            if ($Password.length -gt $MaxLength)
             {
                 Write-Debug "Length is invalid"
             }
